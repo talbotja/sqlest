@@ -321,7 +321,7 @@ class DB2StatementBuilderSpec extends BaseStatementBuilderSpec {
           select(TableTwo.col3, TableTwo.col3)
             .from(TableTwo)
             .where(TableTwo.col2 === "a")
-        ).as("b")
+        )
         .on(TableOne.col1 === TableTwo.col2)
         .whenMatchedThen(
           update(TableOne)
@@ -339,12 +339,12 @@ class DB2StatementBuilderSpec extends BaseStatementBuilderSpec {
     } should equal(
       s"""
        |merge into one
-       |using (select two.col1 as two_col1, two.col2 as two_col2 from two where two.col1 = 'a') as b
-       |on one.col1 = b.two_col1
-       |when matched then update set one.col2 = b.two_col2
-       |when not matched then insert (one.col1, one.col2) values (b.two_col1, b.two_col2)
+       |using (select two.col3 as two_col3, two.col2 as two_col2 from two where two.col2 = ?) as using_clause
+       |on one.col1 = using_clause.two_col2
+       |when matched then update set one.col2 = using_clause.two_col3
+       |when not matched then insert (one.col1, one.col2) values (using_clause.two_col2, using_clause.two_col3)
        """.formatSql,
-      List(Nil)
+      List(List("a"))
     )
   }
 

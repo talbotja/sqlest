@@ -155,7 +155,7 @@ trait DB2StatementBuilder extends base.StatementBuilder {
     Seq(
       mergeIntoSql(merge.into),
       mergeUsingSql(merge.using),
-      mergeAliasSql(merge.subqueryAlias),
+      mergeOnSql(merge.on),
       mergeWhenMatchedSql(merge.whenMatched),
       mergeWhenNotMatchedSql(merge.whenNotMatched)
     ) mkString " "
@@ -166,28 +166,27 @@ trait DB2StatementBuilder extends base.StatementBuilder {
   }
 
   def mergeUsingSql(using: Relation): String = using match {
-    case select: Select[_, _] => s"using (${selectSql(select)})"
-    case join: Join[_, _] => s"using (${joinSql(join)})"
+    case select: Select[_, _] => s"using (${selectSql(select)}) as using_clause"
+    case join: Join[_, _] => s"using (${joinSql(join)}) as using_clause"
     case _ => throw new UnsupportedOperationException("Unsupported using clause in merge statement")
   }
 
-  def mergeAliasSql(alias: String): String = {
-    s"as $alias"
+  def mergeOnSql(condition: Column[Boolean]): String = {
+    s"on ${columnSql(condition)}"
   }
 
-  def mergeWhenMatchedSql(whenMatched: Update): String = {
-    s"when matched then update ${updateSetSql(whenMatched.set)}"
+  def mergeWhenMatchedSql(whenMatched: Option[Command]): String = whenMatched match {
+    case Some(Update(table, set, where)) => s"when matched then update ${updateSetSql(set)}"
+    case _ => throw new UnsupportedOperationException("Unsupported when matched clause in merge statement")
   }
 
-  def mergeWhenNotMatchedSql(whenNotMatched: Insert): String = whenNotMatched match {
-    case insert: InsertValues =>
-      s"when not matched then insert ${insertColumnsSql(insert.columns)} ${insertValuesSql(insert.columns)}"
-    case InsertFromSelect(into, columns, select) =>
-      s"when not matched then insert ${insertColumnsSql(columns)} ${selectSql(select)}"
+  def mergeWhenNotMatchedSql(whenNotMatched: Option[Command]): String = whenNotMatched match {
+    case Some(insert: InsertValues) => s"when not matched then insert ${insertColumnsSql(insert.columns)} ${insertValuesSql(insert.columns)}"
+    case _ => throw new UnsupportedOperationException("Unsupported when not matched clause in merge statement")
   }
 
   override def mergeArgs[A <: Table, B <: Relation](merge: Merge[A, B]): List[List[LiteralColumn[_]]] = {
-    mergeUsingArgs(merge.using) :: updateArgs(merge.whenMatched) :: insertArgs(merge.whenNotMatched)
+    Nil //mergeUsingArgs(merge.using) :: updateArgs(merge.whenMatched) :: insertArgs(merge.whenNotMatched)
   }
 
   def mergeUsingArgs(using: Relation): List[LiteralColumn[_]] = using match {

@@ -63,9 +63,17 @@ object ColumnOperations {
       Merge(
         merge.into,
         merge.using.mapColumns(f, selectFunction),
-        merge.subqueryAlias,
-        merge.whenMatched.mapColumns(f, selectFunction),
-        merge.whenNotMatched.mapColumns(f, selectFunction)
+        merge.on.mapColumns(f, selectFunction),
+        merge.whenMatched.map(_ match {
+          case update: Update => update.mapColumns(f, selectFunction)
+          case insert: Insert => insert.mapColumns(f, selectFunction)
+          case delete: Delete => delete.mapColumns(f, selectFunction)
+        }),
+        merge.whenNotMatched.map(_ match {
+          case update: Update => update.mapColumns(f, selectFunction)
+          case insert: Insert => insert.mapColumns(f, selectFunction)
+          case delete: Delete => delete.mapColumns(f, selectFunction)
+        })
       )
   }
 

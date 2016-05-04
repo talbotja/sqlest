@@ -7,28 +7,24 @@ trait MergeSyntax {
 }
 
 case class MergeBuilder(table: Table) {
-  def using(relation: Relation) = MergeAsBuilder(table, relation)
+  def using(relation: Relation) = MergeOnBuilder(table, relation)
 }
 
-case class MergeAsBuilder(table: Table, using: Relation) {
-  def as(alias: String) = MergeOnBuilder(table, using, alias)
+case class MergeOnBuilder(table: Table, using: Relation) {
+  def on(condition: Column[Boolean]) = MergeMatchedBuilder(table, using, condition)
 }
 
-case class MergeOnBuilder(table: Table, using: Relation, alias: String) {
-  def on(condition: Column[Boolean]) = MergeMatchedBuilder(table, using, alias, condition)
+case class MergeMatchedBuilder(table: Table, using: Relation, condition: Column[Boolean]) {
+  def whenMatchedThen(whenMatched: UpdateWhereBuilder) = MergeNotMatchedBuilder(table, using, condition, whenMatched.where(ConstantColumn[Boolean](true)))
 }
 
-case class MergeMatchedBuilder(table: Table, using: Relation, alias: String, condition: Column[Boolean]) {
-  def whenMatchedThen(update: UpdateWhereBuilder) = MergeNotMatchedBuilder(table, using, alias, condition, update.where(condition))
-}
-
-case class MergeNotMatchedBuilder(table: Table, using: Relation, alias: String, condition: Column[Boolean], whenMatched: Update) {
-  def whenNotMatchedThen(insert: Insert) =
+case class MergeNotMatchedBuilder(table: Table, using: Relation, condition: Column[Boolean], whenMatched: Command) {
+  def whenNotMatchedThen(whenNotMatched: Command) =
     Merge(
       into = table,
-      using = table.innerJoin(using).on(condition),
-      subqueryAlias = alias,
-      whenMatched = whenMatched,
-      whenNotMatched = insert
+      using = using,
+      on = condition,
+      whenMatched = Some(whenMatched),
+      whenNotMatched = Some(whenNotMatched)
     )
 }
