@@ -309,4 +309,43 @@ class DB2StatementBuilderSpec extends BaseStatementBuilderSpec {
     )
   }
 
+  "merge into statements" should "produce the right sql" in {
+    val SubSelect =
+      select(TableTwo.col3, TableTwo.col3)
+        .from(TableTwo)
+        .where(TableTwo.col2 === "a")
+        .as("b")
+    sql {
+      mergeInto(TableOne)
+        .using(
+          select(TableTwo.col3, TableTwo.col3)
+            .from(TableTwo)
+            .where(TableTwo.col2 === "a")
+        ).as("b")
+        .on(TableOne.col1 === TableTwo.col2)
+        .whenMatchedThen(
+          update(TableOne)
+            .set(TableOne.col2 -> TableTwo.col3)
+        )
+        .whenNotMatchedThen(
+          insert
+            .into(TableOne)
+            .columns(TableOne.col1, TableOne.col2)
+            .values(
+              TableOne.col1 -> TableTwo.col2,
+              TableOne.col2 -> TableTwo.col3
+            )
+        )
+    } should equal(
+      s"""
+       |merge into one
+       |using (select two.col1 as two_col1, two.col2 as two_col2 from two where two.col1 = 'a') as b
+       |on one.col1 = b.two_col1
+       |when matched then update set one.col2 = b.two_col2
+       |when not matched then insert (one.col1, one.col2) values (b.two_col1, b.two_col2)
+       """.formatSql,
+      List(Nil)
+    )
+  }
+
 }

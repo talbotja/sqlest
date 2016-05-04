@@ -23,6 +23,7 @@ trait QuerySyntax {
   object insert extends InsertSyntax
   object update extends UpdateSyntax
   object delete extends DeleteSyntax
+  object mergeInto extends MergeSyntax
 
   implicit def selectOps[A, R <: Relation](select: Select[A, R]) = SelectOps(select)
   def lateral[A, R <: Relation](select: Select[A, R]) = Lateral(select)

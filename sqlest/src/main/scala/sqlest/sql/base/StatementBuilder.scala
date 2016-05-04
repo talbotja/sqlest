@@ -22,7 +22,8 @@ trait StatementBuilder extends BaseStatementBuilder
     with SelectStatementBuilder
     with InsertStatementBuilder
     with UpdateStatementBuilder
-    with DeleteStatementBuilder {
+    with DeleteStatementBuilder
+    with MergeStatementBuilder {
 
   def apply(operation: Operation) = {
     val preprocessedOperation = preprocess(operation)
@@ -44,6 +45,7 @@ trait StatementBuilder extends BaseStatementBuilder
     case insert: Insert => insertSql(insert)
     case update: Update => updateSql(update)
     case delete: Delete => deleteSql(delete)
+    case merge: Merge[_, _] => mergeSql(merge)
     case other => sys.error("Unsupported operation type: " + other)
   }
 
@@ -52,6 +54,7 @@ trait StatementBuilder extends BaseStatementBuilder
     case insert: Insert => insertArgs(insert)
     case update: Update => List(updateArgs(update))
     case delete: Delete => List(deleteArgs(delete))
+    case merge: Merge[_, _] => mergeArgs(merge)
     case other => sys.error("Unsupported operation type: " + other)
   }
 

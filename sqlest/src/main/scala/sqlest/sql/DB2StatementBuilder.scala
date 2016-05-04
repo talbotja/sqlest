@@ -17,9 +17,12 @@
 package sqlest.sql
 
 import sqlest.ast._
+import sqlest.sql.base.SelectStatementBuilder
 import sqlest.ast.operations.ColumnOperations._
 
 trait DB2StatementBuilder extends base.StatementBuilder {
+  //selectStatementBuilder: SelectStatementBuilder =>
+
   override def preprocess(operation: Operation): Operation =
     addTypingToSqlParams(super.preprocess(operation))
 
@@ -146,6 +149,51 @@ trait DB2StatementBuilder extends base.StatementBuilder {
     case Setter(_, column) if column.columnType == BooleanColumnType =>
       throw new AssertionError("DB2 does not support Boolean data types")
     case _ => super.setterArgs(setter)
+  }
+
+  override def mergeSql[A <: Table, B <: Relation](merge: Merge[A, B]) = {
+    Seq(
+      mergeIntoSql(merge.into),
+      mergeUsingSql(merge.using),
+      mergeAliasSql(merge.subqueryAlias),
+      mergeWhenMatchedSql(merge.whenMatched),
+      mergeWhenNotMatchedSql(merge.whenNotMatched)
+    ) mkString " "
+  }
+
+  def mergeIntoSql[A <: Table](into: A): String = {
+    s"merge into ${identifierSql(into.tableName)}"
+  }
+
+  def mergeUsingSql(using: Relation): String = using match {
+    case select: Select[_, _] => s"using (${selectSql(select)})"
+    case join: Join[_, _] => s"using (${joinSql(join)})"
+    case _ => throw new UnsupportedOperationException("Unsupported using clause in merge statement")
+  }
+
+  def mergeAliasSql(alias: String): String = {
+    s"as $alias"
+  }
+
+  def mergeWhenMatchedSql(whenMatched: Update): String = {
+    s"when matched then update ${updateSetSql(whenMatched.set)}"
+  }
+
+  def mergeWhenNotMatchedSql(whenNotMatched: Insert): String = whenNotMatched match {
+    case insert: InsertValues =>
+      s"when not matched then insert ${insertColumnsSql(insert.columns)} ${insertValuesSql(insert.columns)}"
+    case InsertFromSelect(into, columns, select) =>
+      s"when not matched then insert ${insertColumnsSql(columns)} ${selectSql(select)}"
+  }
+
+  override def mergeArgs[A <: Table, B <: Relation](merge: Merge[A, B]): List[List[LiteralColumn[_]]] = {
+    mergeUsingArgs(merge.using) :: updateArgs(merge.whenMatched) :: insertArgs(merge.whenNotMatched)
+  }
+
+  def mergeUsingArgs(using: Relation): List[LiteralColumn[_]] = using match {
+    case select: Select[_, _] => selectArgs(select)
+    case join: Join[_, _] => joinArgs(join)
+    case _ => throw new UnsupportedOperationException("Unsupported using clause in merge statement")
   }
 }
 

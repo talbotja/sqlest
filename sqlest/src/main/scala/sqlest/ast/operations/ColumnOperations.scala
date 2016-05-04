@@ -58,6 +58,17 @@ object ColumnOperations {
       Delete(delete.from, delete.where.map(_.mapColumns(f, selectFunction)))
   }
 
+  implicit class MergeColumnOps[A <: Table, B <: Relation](merge: Merge[A, B]) {
+    def mapColumns(f: Column[_] => Column[_], selectFunction: Select[_, _ <: Relation] => Select[_, _ <: Relation]): Merge[A, _ <: Relation] =
+      Merge(
+        merge.into,
+        merge.using.mapColumns(f, selectFunction),
+        merge.subqueryAlias,
+        merge.whenMatched.mapColumns(f, selectFunction),
+        merge.whenNotMatched.mapColumns(f, selectFunction)
+      )
+  }
+
   implicit class ColumnOps[A](column: Column[A]) {
     def mapColumns(f: Column[_] => Column[_], selectFunction: Select[_, _ <: Relation] => Select[_, _ <: Relation]): Column[A] = column match {
       case literalColumn: LiteralColumn[A] => f(literalColumn).asInstanceOf[Column[A]]
