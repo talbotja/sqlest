@@ -175,13 +175,13 @@ trait DB2StatementBuilder extends base.StatementBuilder {
     s"on ${columnSql(condition)}"
   }
 
-  def mergeWhenMatchedSql(whenMatched: Option[Command]): String = whenMatched match {
-    case Some(Update(table, set, where)) => s"when matched then update ${updateSetSql(set)}"
+  def mergeWhenMatchedSql(whenMatched: Option[MergeCommand]): String = whenMatched match {
+    case Some(MergeUpdate(set)) => s"when matched then update ${updateSetSql(set)}"
     case _ => throw new UnsupportedOperationException("Unsupported when matched clause in merge statement")
   }
 
-  def mergeWhenNotMatchedSql(whenNotMatched: Option[Command]): String = whenNotMatched match {
-    case Some(insert: InsertValues) => s"when not matched then insert ${insertColumnsSql(insert.columns)} ${insertValuesSql(insert.columns)}"
+  def mergeWhenNotMatchedSql(whenNotMatched: Option[MergeCommand]): String = whenNotMatched match {
+    case Some(insert: MergeInsert) => s"when not matched then insert ${insertColumnsSql(insert.columns)} ${insertValuesSql(insert.columns)}"
     case _ => throw new UnsupportedOperationException("Unsupported when not matched clause in merge statement")
   }
 

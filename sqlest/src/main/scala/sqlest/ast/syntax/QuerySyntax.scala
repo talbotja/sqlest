@@ -20,10 +20,10 @@ import sqlest.ast.{ Lateral, Relation, Select, ExistsColumn, NotExistsColumn }
 
 trait QuerySyntax {
   object select extends SelectSyntax
-  object insert extends InsertSyntax
-  object update extends UpdateSyntax
+  object insert extends InsertSyntax with MergeInsertSyntax
+  object update extends UpdateSyntax with MergeUpdateSyntax
   object delete extends DeleteSyntax
-  object mergeInto extends MergeSyntax
+  object merge extends MergeSyntax
 
   implicit def selectOps[A, R <: Relation](select: Select[A, R]) = SelectOps(select)
   def lateral[A, R <: Relation](select: Select[A, R]) = Lateral(select)

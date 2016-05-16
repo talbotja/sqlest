@@ -58,6 +58,16 @@ object ColumnOperations {
       Delete(delete.from, delete.where.map(_.mapColumns(f, selectFunction)))
   }
 
+  implicit class MergeUpdateColumnOps(update: MergeUpdate) {
+    def mapColumns(f: Column[_] => Column[_], selectFunction: Select[_, _ <: Relation] => Select[_, _ <: Relation]): MergeUpdate =
+      MergeUpdate(update.set.map(_.mapColumns(f, selectFunction)))
+  }
+
+  implicit class MergeInsertColumnOps(insert: MergeInsert) {
+    def mapColumns(f: Column[_] => Column[_], selectFunction: Select[_, _ <: Relation] => Select[_, _ <: Relation]): MergeInsert =
+      MergeInsert(insert.setterLists.map(_.map(_.mapColumns(f, selectFunction))))
+  }
+
   implicit class MergeColumnOps[A <: Table, B <: Relation](merge: Merge[A, B]) {
     def mapColumns(f: Column[_] => Column[_], selectFunction: Select[_, _ <: Relation] => Select[_, _ <: Relation]): Merge[A, _ <: Relation] =
       Merge(
@@ -65,14 +75,12 @@ object ColumnOperations {
         merge.using.mapColumns(f, selectFunction),
         merge.on.mapColumns(f, selectFunction),
         merge.whenMatched.map(_ match {
-          case update: Update => update.mapColumns(f, selectFunction)
-          case insert: Insert => insert.mapColumns(f, selectFunction)
-          case delete: Delete => delete.mapColumns(f, selectFunction)
+          case update: MergeUpdate => update.mapColumns(f, selectFunction)
+          case insert: MergeInsert => insert.mapColumns(f, selectFunction)
         }),
         merge.whenNotMatched.map(_ match {
-          case update: Update => update.mapColumns(f, selectFunction)
-          case insert: Insert => insert.mapColumns(f, selectFunction)
-          case delete: Delete => delete.mapColumns(f, selectFunction)
+          case update: MergeUpdate => update.mapColumns(f, selectFunction)
+          case insert: MergeInsert => insert.mapColumns(f, selectFunction)
         })
       )
   }

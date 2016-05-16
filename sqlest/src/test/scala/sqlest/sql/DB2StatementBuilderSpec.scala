@@ -316,7 +316,8 @@ class DB2StatementBuilderSpec extends BaseStatementBuilderSpec {
         .where(TableTwo.col2 === "a")
         .as("b")
     sql {
-      mergeInto(TableOne)
+      merge
+        .into(TableOne)
         .using(
           select(TableTwo.col3, TableTwo.col3)
             .from(TableTwo)
@@ -324,12 +325,11 @@ class DB2StatementBuilderSpec extends BaseStatementBuilderSpec {
         )
         .on(TableOne.col1 === TableTwo.col2)
         .whenMatchedThen(
-          update(TableOne)
+          update
             .set(TableOne.col2 -> TableTwo.col3)
         )
         .whenNotMatchedThen(
           insert
-            .into(TableOne)
             .columns(TableOne.col1, TableOne.col2)
             .values(
               TableOne.col1 -> TableTwo.col2,
