@@ -171,12 +171,18 @@ trait DB2StatementBuilder extends base.StatementBuilder {
     case _ => throw new UnsupportedOperationException("Unsupported using clause in merge statement")
   }
 
+  private def reAliasColumn(column: Column[_]): Column[_] = column match {
+    case column: InfixFunctionColumn[_] => column.copy(parameter2 = reAliasColumn(column.parameter2))(column.columnType)
+    case column: TableColumn[_] => column.copy(tableAlias = "using_clause", columnName = column.columnAlias)(column.columnType)
+    case _ => column
+  }
+
   def mergeOnSql(condition: Column[Boolean]): String = {
-    s"on ${columnSql(condition)}"
+    s"on ${columnSql(reAliasColumn(condition))}"
   }
 
   def mergeWhenMatchedSql(whenMatched: Option[MergeCommand]): String = whenMatched match {
-    case Some(MergeUpdate(set)) => s"when matched then update ${updateSetSql(set)}"
+    case Some(MergeUpdate(set)) => s"when matched then update ${updateSetSql(set.map(setter => new Setter(setter.column, reAliasColumn(setter.value))))}"
     case _ => throw new UnsupportedOperationException("Unsupported when matched clause in merge statement")
   }
 
@@ -185,8 +191,16 @@ trait DB2StatementBuilder extends base.StatementBuilder {
     case _ => throw new UnsupportedOperationException("Unsupported when not matched clause in merge statement")
   }
 
+  def mergeCommandArgs(command: Option[MergeCommand]) = command match {
+    case Some(update: MergeUpdate) => mergeUpdateArgs(update)
+    case Some(insert: MergeInsert) => mergeInsertArgs(insert)
+    case None => List.empty[LiteralColumn[_]]
+  }
+  def mergeUpdateArgs(update: MergeUpdate): List[LiteralColumn[_]] = Nil
+  def mergeInsertArgs(insert: MergeInsert): List[LiteralColumn[_]] = Nil
+
   override def mergeArgs[A <: Table, B <: Relation](merge: Merge[A, B]): List[List[LiteralColumn[_]]] = {
-    Nil //mergeUsingArgs(merge.using) :: updateArgs(merge.whenMatched) :: insertArgs(merge.whenNotMatched)
+    List(mergeUsingArgs(merge.using) ++ mergeCommandArgs(merge.whenMatched) ++ mergeCommandArgs(merge.whenNotMatched))
   }
 
   def mergeUsingArgs(using: Relation): List[LiteralColumn[_]] = using match {

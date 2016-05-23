@@ -310,11 +310,6 @@ class DB2StatementBuilderSpec extends BaseStatementBuilderSpec {
   }
 
   "merge into statements" should "produce the right sql" in {
-    val SubSelect =
-      select(TableTwo.col3, TableTwo.col3)
-        .from(TableTwo)
-        .where(TableTwo.col2 === "a")
-        .as("b")
     sql {
       merge
         .into(TableOne)
@@ -339,10 +334,10 @@ class DB2StatementBuilderSpec extends BaseStatementBuilderSpec {
     } should equal(
       s"""
        |merge into one
-       |using (select two.col3 as two_col3, two.col2 as two_col2 from two where two.col2 = ?) as using_clause
-       |on one.col1 = using_clause.two_col2
-       |when matched then update set one.col2 = using_clause.two_col3
-       |when not matched then insert (one.col1, one.col2) values (using_clause.two_col2, using_clause.two_col3)
+       |using (select two.col3 as two_col3, two.col2 as two_col2 from two where (two.col2 = ?)) as using_clause
+       |on (one.col1 = using_clause.two_col2)
+       |when matched then update set col2 = using_clause.two_col3
+       |when not matched then insert (col1, col2) values (using_clause.two_col2, using_clause.two_col3)
        """.formatSql,
       List(List("a"))
     )

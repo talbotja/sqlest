@@ -7,7 +7,7 @@ case class Merge[A <: Table, B <: Relation](
   whenMatched: Option[MergeCommand],
   whenNotMatched: Option[MergeCommand]) extends Command
 
-trait MergeCommand
+sealed trait MergeCommand
 case class MergeUpdate(set: Seq[Setter[_, _]]) extends MergeCommand
 case class MergeInsert(setterLists: Seq[Seq[Setter[_, _]]]) extends MergeCommand {
   def columns = setterLists.head.map(_.column)
