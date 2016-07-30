@@ -187,8 +187,15 @@ trait DB2StatementBuilder extends base.StatementBuilder {
   }
 
   def mergeWhenNotMatchedSql(whenNotMatched: Option[MergeCommand]): String = whenNotMatched match {
-    case Some(insert: MergeInsert) => s"when not matched then insert ${insertColumnsSql(insert.columns)} ${insertValuesSql(insert.columns)}"
+    case Some(insert: MergeInsert) => s"when not matched then insert ${insertColumnsSql(insert.columns)} values ${mergeInsertValuesSql(insert.setterLists)}"
     case _ => throw new UnsupportedOperationException("Unsupported when not matched clause in merge statement")
+  }
+
+  def mergeInsertValuesSql(setters: Seq[Seq[Setter[_, _]]]) = {
+    setters
+      .head
+      .map(s => "using_clause." + columnSql(s.value).replace('.', '_'))
+      .mkString("(", ", ", ")")
   }
 
   def mergeCommandArgs(command: Option[MergeCommand]) = command match {

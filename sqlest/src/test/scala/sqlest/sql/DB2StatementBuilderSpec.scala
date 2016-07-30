@@ -314,7 +314,7 @@ class DB2StatementBuilderSpec extends BaseStatementBuilderSpec {
       merge
         .into(TableOne)
         .using(
-          select(TableTwo.col3, TableTwo.col3)
+          select(TableTwo.col3, TableTwo.col2)
             .from(TableTwo)
             .where(TableTwo.col2 === "a")
         )
